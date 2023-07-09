@@ -1,8 +1,13 @@
-version: "3.7"
+version: "3.9"
 
 services:
   elasticsearch:
-    image: elasticsearch:8.8.1
+    image: elasticsearch:${STACK_VERSION}
+    container_name: elasticsearch
+    volumes:
+      - type: volume
+        source: es_data
+        target: /usr/share/elasticsearch/data
     ports:
       - "9200:9200"
       - "9300:9300"
@@ -11,10 +16,22 @@ services:
       - ES_JAVA_OPTS=-Xms750m -Xmx750m
       - xpack.security.enabled=false
     networks:
-      - search
+      - elastic
+
+  kibana:
+    image: kibana:${STACK_VERSION}
+    container_name: kibana
+    ports:
+      - target: 5601
+        published: 5601
+    depends_on:
+      - elasticsearch
+    networks:
+      - elastic  
 
   logstash:
-    image: logstash:8.6.1
+    image: logstash:${STACK_VERSION}
+    container_name: logstash
     depends_on:
       - elasticsearch
     volumes:
@@ -25,10 +42,11 @@ services:
       - ELASTIC_HOST=elasticsearch
       - MYSQL_HOST=mysql
     networks:
-      - search
+      - elastic
 
   mysql:
     image: mysql:8
+    container_name: mysql
     restart: always
     command: --default-authentication-plugin=mysql_native_password
     environment:
@@ -40,8 +58,13 @@ services:
     ports:
       - "3306:3306"
     networks:
-      - search
+      - elastic
+
+volumes:
+  es_data:
+    driver: local
 
 networks:
-  search:
+  elastic:
+    name: elastic
     driver: bridge
